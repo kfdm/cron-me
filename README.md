@@ -29,3 +29,9 @@ GROWL=127.0.0.1
 SENTRY_DSN=http://sentry.example/
 @hourly cron-me -- /path/to/script
 ```
+
+
+
+## References
+* https://github.com/getsentry/raven-go
+* https://github.com/prometheus/client_golang
