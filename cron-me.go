@@ -85,6 +85,7 @@ func main() {
 				"User":       user.Username,
 				"Command":    fmt.Sprintf("%v", cmd.Args),
 				"Returncode": fmt.Sprintf("%d", returncode),
+				// "Output":     bufout.String(),
 			})
 		}
 	}
