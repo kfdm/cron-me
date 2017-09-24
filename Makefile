@@ -23,6 +23,7 @@ run:
 deps:
 	$(GOGET) "github.com/getsentry/raven-go"
 	$(GOGET) "github.com/fluent/fluent-logger-golang/fluent"
+	$(GOGET) "github.com/ShowMax/go-fqdn"
 
 # Cross compilation
 build-linux:

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/ShowMax/go-fqdn"
 	"github.com/fluent/fluent-logger-golang/fluent"
 	"github.com/getsentry/raven-go"
 )
@@ -31,6 +32,7 @@ func main() {
 	}
 
 	user, _ := user.Current()
+	host := fqdn.Get()
 
 	logger, _ := fluent.New(fluent.Config{})
 	defer logger.Close()
@@ -51,6 +53,7 @@ func main() {
 		_ = logger.Post("cron.start", map[string]string{
 			"User":    user.Username,
 			"Command": fmt.Sprintf("%v", cmd.Args),
+			"Host":    host,
 		})
 	}
 
@@ -72,12 +75,14 @@ func main() {
 				"User":       user.Username,
 				"Command":    fmt.Sprintf("%v", cmd.Args),
 				"Returncode": fmt.Sprintf("%d", returncode),
+				"Host":       host,
 			})
 		}
 		raven.CaptureMessageAndWait(cmd.Path, map[string]string{
 			"User":       user.Username,
 			"Command":    fmt.Sprintf("%v", cmd.Args),
 			"Returncode": fmt.Sprintf("%d", returncode),
+			"Host":       host,
 		})
 	} else {
 		if logger != nil {
@@ -85,6 +90,7 @@ func main() {
 				"User":       user.Username,
 				"Command":    fmt.Sprintf("%v", cmd.Args),
 				"Returncode": fmt.Sprintf("%d", returncode),
+				"Host":       host,
 				// "Output":     bufout.String(),
 			})
 		}
