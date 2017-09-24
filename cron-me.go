@@ -75,16 +75,16 @@ func main() {
 			})
 		}
 		raven.CaptureMessageAndWait(cmd.Path, map[string]string{
-			"Args":       fmt.Sprintf("%v", cmd.Args),
 			"User":       user.Username,
+			"Command":    fmt.Sprintf("%v", cmd.Args),
 			"Returncode": fmt.Sprintf("%d", returncode),
 		})
 	} else {
 		if logger != nil {
 			_ = logger.Post("cron.complete", map[string]string{
-				"User":    user.Username,
-				"Command": fmt.Sprintf("%v", cmd.Args),
-				"Output":  bufout.String(),
+				"User":       user.Username,
+				"Command":    fmt.Sprintf("%v", cmd.Args),
+				"Returncode": fmt.Sprintf("%d", returncode),
 			})
 		}
 	}
