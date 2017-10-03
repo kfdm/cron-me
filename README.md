@@ -35,3 +35,4 @@ SENTRY_DSN=http://sentry.example/
 ## References
 * https://github.com/getsentry/raven-go
 * https://github.com/prometheus/client_golang
+* http://shtylman.com/post/cron-shell-power/
