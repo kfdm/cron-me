@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/ShowMax/go-fqdn"
 	"github.com/fluent/fluent-logger-golang/fluent"
@@ -62,7 +63,10 @@ func main() {
 	cmd.Stdout = io.MultiWriter(&bufout, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&bufout, os.Stderr)
 
+	start := time.Now()
 	rtn := cmd.Run()
+	duration := time.Since(start)
+
 	returncode := 0
 	if rtn != nil {
 		if msg, ok := rtn.(*exec.ExitError); ok { // there is error code
@@ -76,6 +80,7 @@ func main() {
 				"Command":    fmt.Sprintf("%v", cmd.Args),
 				"Returncode": fmt.Sprintf("%d", returncode),
 				"Host":       host,
+				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
 			})
 		}
 		raven.CaptureMessageAndWait(cmd.Path, map[string]string{
@@ -91,7 +96,8 @@ func main() {
 				"Command":    fmt.Sprintf("%v", cmd.Args),
 				"Returncode": fmt.Sprintf("%d", returncode),
 				"Host":       host,
-				// "Output":     bufout.String(),
+				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
+				//"Output":     bufout.String(),
 			})
 		}
 	}
