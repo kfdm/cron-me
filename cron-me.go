@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"syscall"
@@ -18,6 +19,9 @@ import (
 )
 
 func main() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	// Remove 'cron-me' from args
 	_, a := os.Args[0], os.Args[1:]
 
@@ -62,6 +66,13 @@ func main() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = io.MultiWriter(&bufout, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&bufout, os.Stderr)
+
+	go func() {
+		s := <-c
+		if cmd.ProcessState == nil {
+			cmd.Process.Signal(s)
+		}
+	}()
 
 	start := time.Now()
 	rtn := cmd.Run()
