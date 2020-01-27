@@ -3,27 +3,22 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
+GOMOD=$(GOCMD) mod
 BINARY_NAME=cron-me
 BINARY_UNIX=$(BINARY_NAME)_unix
 
 all: test build
 build:
-	$(GOBUILD) -o $(BINARY_NAME) -v
+	$(GOCMD) mod vendor
+	$(GOCMD) build -o $(BINARY_NAME) -v
 test: build
 	#$(GOTEST) -v ./...
 clean:
-	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
-run:
-	$(GOBUILD) -o $(BINARY_NAME) -v
+run: build
 	./$(BINARY_NAME) fortune
 	./$(BINARY_NAME) false
-deps:
-	$(GOGET) "github.com/getsentry/raven-go"
-	$(GOGET) "github.com/fluent/fluent-logger-golang/fluent"
-	$(GOGET) "github.com/ShowMax/go-fqdn"
 
 # Cross compilation
 build-linux:
