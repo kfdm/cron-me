@@ -1,24 +1,19 @@
 # Go parameters
+GO111MODULES=on
 GOCMD=go
 GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOMOD=$(GOCMD) mod
-BINARY_NAME=cron-me
-BINARY_UNIX=$(BINARY_NAME)_unix
 
-all: test build
-build:
-	$(GOCMD) mod vendor
-	$(GOCMD) build -o $(BINARY_NAME) -v
-test: build
-	#$(GOTEST) -v ./...
-clean:
-	rm -f $(BINARY_NAME)
-	rm -f $(BINARY_UNIX)
+obj_files:= cron-shell cron-me
+
+all: $(obj_files)
+
 run: build
 	./$(BINARY_NAME) fortune
 	./$(BINARY_NAME) false
+
+.PHONY:	$(obj_files)
+$(obj_files):
+	$(GOBUILD) -o $@ cmd/$@/main.go
 
 # Cross compilation
 build-linux:
