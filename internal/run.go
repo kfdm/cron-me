@@ -1,9 +1,8 @@
 package internal
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,34 +16,50 @@ import (
 	"github.com/getsentry/raven-go"
 )
 
-// Wrap a command execution
-func Wrap(cmd *exec.Cmd) (int, time.Duration) {
+// signalWatcher handles our signals
+// https://github.com/Netflix/signal-wrapper/blob/master/main.go#L25
+func signalWatcher(ctx context.Context, cmd *exec.Cmd) {
+	signalChan := make(chan os.Signal, 100)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	signal := <-signalChan
+
+	if err := cmd.Process.Signal(signal); err != nil {
+		log.Printf("Unable to forward signal: %v", err)
+	}
+
+	for signal = range signalChan {
+		log.Printf("Forwarding signal: %v", signal)
+		if err := cmd.Process.Signal(signal); err != nil {
+			log.Printf("Unable to forward signal %v:", err)
+		}
+	}
+}
+
+// WrapReturn returns proper error code
+func WrapReturn(cmd *exec.Cmd) int {
 	returncode := 0
-	start := time.Now()
 	rtn := cmd.Run()
-	duration := time.Since(start)
 
 	if rtn == nil {
-		return returncode, duration
+		return returncode
 	}
 
 	if msg, ok := rtn.(*exec.ExitError); ok { // there is error code
 		log.Printf("Command finished with error: %v", rtn)
 		returncode = msg.Sys().(syscall.WaitStatus).ExitStatus()
 	}
-
-	return returncode, duration
+	return returncode
 }
 
 // Run a command
 func Run(cmd *exec.Cmd) int {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	user, _ := user.Current()
 	host := fqdn.Get()
 
-	logger, _ := fluent.New(fluent.Config{})
+	logger, _ := fluent.New(fluent.Config{Async: true})
 	defer logger.Close()
 
 	if logger != nil {
@@ -52,22 +67,20 @@ func Run(cmd *exec.Cmd) int {
 			"User":    user.Username,
 			"Command": fmt.Sprintf("%v", cmd.Args),
 			"Host":    host,
+			"Test":    cmd.String(),
 		})
 	}
 
-	var bufout bytes.Buffer
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = io.MultiWriter(&bufout, os.Stdout)
-	cmd.Stderr = io.MultiWriter(&bufout, os.Stderr)
+	// var bufout bytes.Buffer
+	// cmd.Stdin = os.Stdin
+	// cmd.Stdout = io.MultiWriter(&bufout, os.Stdout)
+	// cmd.Stderr = io.MultiWriter(&bufout, os.Stderr)
 
-	go func() {
-		s := <-c
-		if cmd.ProcessState == nil {
-			cmd.Process.Signal(s)
-		}
-	}()
+	go signalWatcher(ctx, cmd)
 
-	returncode, duration := Wrap(cmd)
+	start := time.Now()
+	returncode := WrapReturn(cmd)
+	duration := time.Since(start)
 
 	if returncode == 0 {
 		if logger != nil {
@@ -77,7 +90,7 @@ func Run(cmd *exec.Cmd) int {
 				"Returncode": fmt.Sprintf("%d", returncode),
 				"Host":       host,
 				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
-				//"Output":     bufout.String(),
+				// "Output":     bufout.String(),
 			})
 		}
 	} else {
