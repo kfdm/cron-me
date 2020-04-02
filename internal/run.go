@@ -13,7 +13,7 @@ import (
 
 	"github.com/ShowMax/go-fqdn"
 	"github.com/fluent/fluent-logger-golang/fluent"
-	"github.com/getsentry/raven-go"
+	"github.com/getsentry/sentry-go"
 )
 
 // signalWatcher handles our signals
@@ -103,12 +103,18 @@ func Run(cmd *exec.Cmd) int {
 				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
 			})
 		}
-		raven.CaptureMessageAndWait(cmd.Path, map[string]string{
-			"User":       user.Username,
-			"Command":    fmt.Sprintf("%v", cmd.Args),
-			"Returncode": fmt.Sprintf("%d", returncode),
-			"Host":       host,
-		})
+
+		err := sentry.Init(sentry.ClientOptions{})
+		if err == nil {
+			defer sentry.Flush(2 * time.Second)
+			sentry.ConfigureScope(func(scope *sentry.Scope) {
+				scope.SetLevel(sentry.LevelWarning)
+				scope.SetUser(sentry.User{Username: user.Username, ID: user.Uid})
+				scope.SetExtra("Returncode", returncode)
+				scope.SetExtra("Command", fmt.Sprintf("%v", cmd.Args))
+			})
+			sentry.CaptureMessage(cmd.String())
+		}
 	}
 
 	return returncode
