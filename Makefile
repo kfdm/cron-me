@@ -8,7 +8,7 @@ PLATFORMS=darwin linux
 BINARIES:= cron-shell cron-me
 
 
-.PHONY:	all $(BINARIES) clean
+.PHONY:	all $(BINARIES) clean test
 
 default: $(BINARIES)
 all: ${PLATFORMS}
@@ -22,3 +22,6 @@ ${PLATFORMS}:
 	@mkdir -p bin/$@
 	GOOS=$@ $(GO) build -o bin/$@/cron-shell cmd/cron-shell/main.go
 	GOOS=$@ $(GO) build -o bin/$@/cron-me cmd/cron-me/main.go
+
+test:
+	$(GO) test -v ./...
