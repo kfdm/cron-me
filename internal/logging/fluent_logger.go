@@ -1,4 +1,4 @@
-package logger
+package logging
 
 import (
 	"github.com/fluent/fluent-logger-golang/fluent"
