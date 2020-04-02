@@ -7,6 +7,10 @@ obj_files:= cron-shell cron-me
 
 all: $(obj_files)
 
+.PHONY:	test
+test:
+	$(GOCMD) test .
+
 run: build
 	./$(BINARY_NAME) fortune
 	./$(BINARY_NAME) false
