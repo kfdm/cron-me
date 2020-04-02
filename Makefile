@@ -1,26 +1,24 @@
 # Go parameters
-GO111MODULES=on
-GOCMD=go
-GOBUILD=$(GOCMD) build
+GO111MODULE=on
+GO ?= go
+GIT ?= git
 
-obj_files:= cron-shell cron-me
 
-all: $(obj_files)
+PLATFORMS=darwin linux
+BINARIES:= cron-shell cron-me
 
-.PHONY:	test
-test:
-	$(GOCMD) test .
 
-run: build
-	./$(BINARY_NAME) fortune
-	./$(BINARY_NAME) false
+.PHONY:	all $(BINARIES) clean
 
-.PHONY:	$(obj_files)
-$(obj_files):
-	$(GOBUILD) -o $@ cmd/$@/main.go
+default: $(BINARIES)
+all: ${PLATFORMS}
+clean:
+	${GIT} clean -dxf bin
 
-# Cross compilation
-build-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) -v
-docker-build:
-	docker run --rm -it -v "$(GOPATH)":/go -w /go/src/bitbucket.org/rsohlich/makepost golang:latest go build -o "$(BINARY_UNIX)" -v
+$(BINARIES):
+	$(GO) build -o $@ cmd/$@/main.go
+
+${PLATFORMS}:
+	@mkdir -p bin/$@
+	GOOS=$@ $(GO) build -o bin/$@/cron-shell cmd/cron-shell/main.go
+	GOOS=$@ $(GO) build -o bin/$@/cron-me cmd/cron-me/main.go
