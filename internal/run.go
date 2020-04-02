@@ -2,8 +2,7 @@ package internal
 
 import (
 	"context"
-	"fmt"
-	"log"
+
 	"os"
 	"os/exec"
 	"os/signal"
@@ -12,25 +11,26 @@ import (
 	"time"
 
 	"github.com/ShowMax/go-fqdn"
-	"github.com/fluent/fluent-logger-golang/fluent"
 	"github.com/getsentry/sentry-go"
+	"github.com/go-kit/kit/log"
+	"github.com/kfdm/cron-me/internal/logger"
 )
 
 // signalWatcher handles our signals
 // https://github.com/Netflix/signal-wrapper/blob/master/main.go#L25
-func signalWatcher(ctx context.Context, cmd *exec.Cmd) {
+func signalWatcher(ctx context.Context, cmd *exec.Cmd, logger log.Logger) {
 	signalChan := make(chan os.Signal, 100)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	signal := <-signalChan
 
 	if err := cmd.Process.Signal(signal); err != nil {
-		log.Printf("Unable to forward signal: %v", err)
+		logger.Log("msg", "Unable to forward signal", "err", err)
 	}
 
 	for signal = range signalChan {
-		log.Printf("Forwarding signal: %v", signal)
+		logger.Log("msg", "Forwarding signal", "signal", signal)
 		if err := cmd.Process.Signal(signal); err != nil {
-			log.Printf("Unable to forward signal %v:", err)
+			logger.Log("msg", "Unable to forward signal", "err", err)
 		}
 	}
 }
@@ -45,7 +45,7 @@ func WrapReturn(cmd *exec.Cmd) int {
 	}
 
 	if msg, ok := rtn.(*exec.ExitError); ok { // there is error code
-		log.Printf("Command finished with error: %v", rtn)
+		// log.Printf("Command finished with error: %v", rtn)
 		returncode = msg.Sys().(syscall.WaitStatus).ExitStatus()
 	}
 	return returncode
@@ -56,53 +56,26 @@ func Run(cmd *exec.Cmd) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := logger.NewFluentLogger()
+
 	user, _ := user.Current()
 	host := fqdn.Get()
 
-	logger, _ := fluent.New(fluent.Config{Async: true})
-	defer logger.Close()
+	logger.Log("tag", "cron.start", "User", user.Username, "Command", cmd.Args, "Host", host)
 
-	if logger != nil {
-		_ = logger.Post("cron.start", map[string]string{
-			"User":    user.Username,
-			"Command": fmt.Sprintf("%v", cmd.Args),
-			"Host":    host,
-			"Test":    cmd.String(),
-		})
-	}
-
-	// var bufout bytes.Buffer
-	// cmd.Stdin = os.Stdin
-	// cmd.Stdout = io.MultiWriter(&bufout, os.Stdout)
-	// cmd.Stderr = io.MultiWriter(&bufout, os.Stderr)
-
-	go signalWatcher(ctx, cmd)
+	go signalWatcher(ctx, cmd, logger)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	start := time.Now()
 	returncode := WrapReturn(cmd)
 	duration := time.Since(start)
 
 	if returncode == 0 {
-		if logger != nil {
-			_ = logger.Post("cron.complete", map[string]string{
-				"User":       user.Username,
-				"Command":    fmt.Sprintf("%v", cmd.Args),
-				"Returncode": fmt.Sprintf("%d", returncode),
-				"Host":       host,
-				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
-				// "Output":     bufout.String(),
-			})
-		}
+		logger.Log("tag", "cron.complete", "User", user.Username, "Command", cmd.Args, "Returncode", returncode, "Host", host, "Duration", duration.Seconds())
 	} else {
-		if logger != nil {
-			_ = logger.Post("cron.error", map[string]string{
-				"User":       user.Username,
-				"Command":    fmt.Sprintf("%v", cmd.Args),
-				"Returncode": fmt.Sprintf("%d", returncode),
-				"Host":       host,
-				"Duration":   fmt.Sprintf("%f", duration.Seconds()),
-			})
-		}
+		logger.Log("tag", "cron.error", "User", user.Username, "Command", cmd.Args, "Returncode", returncode, "Host", host, "Duration", duration.Seconds())
 
 		err := sentry.Init(sentry.ClientOptions{})
 		if err == nil {
@@ -111,7 +84,6 @@ func Run(cmd *exec.Cmd) int {
 				scope.SetLevel(sentry.LevelWarning)
 				scope.SetUser(sentry.User{Username: user.Username, ID: user.Uid})
 				scope.SetExtra("Returncode", returncode)
-				scope.SetExtra("Command", fmt.Sprintf("%v", cmd.Args))
 			})
 			sentry.CaptureMessage(cmd.String())
 		}
