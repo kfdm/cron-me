@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/kfdm/cron-me/internal"
+	"github.com/kfdm/cron-me/command"
 )
 
 func main() {
@@ -24,5 +24,5 @@ func main() {
 		}
 	}
 
-	os.Exit(internal.Run(cmd))
+	os.Exit(command.Run(cmd))
 }

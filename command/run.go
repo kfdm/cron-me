@@ -1,4 +1,4 @@
-package internal
+package command
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 
-	"github.com/kfdm/cron-me/internal/logging"
+	"github.com/kfdm/cron-me/logging"
 )
 
 // signalWatcher handles our signals

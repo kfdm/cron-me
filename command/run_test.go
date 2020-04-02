@@ -1,4 +1,4 @@
-package internal
+package command
 
 import (
 	"fmt"
@@ -9,5 +9,5 @@ import (
 func TestRun(t *testing.T) {
 	cmd := exec.Command("false")
 	rtncode := Run(cmd)
-	fmt.Print(rtncode)
+	fmt.Println(rtncode)
 }
