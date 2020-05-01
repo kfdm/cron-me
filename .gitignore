@@ -1,2 +1,4 @@
-cronme
-cron-me
+/cron-me
+/cron-shell
+vendor
+bin
