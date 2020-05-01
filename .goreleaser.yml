@@ -1,0 +1,18 @@
+builds:
+  - id: cron-me
+    binary: cron-me
+    main: cmd/cron-me/main.go
+  - id: cron-shell
+    binary: cron-shell
+    main: cmd/cron-shell/main.go
+
+archives:
+  - builds:
+      - cron-me
+      - cron-shell
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  skip: true

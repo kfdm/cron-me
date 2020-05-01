@@ -3,26 +3,23 @@ GO111MODULE=on
 GO ?= go
 GIT ?= git
 
-
-PLATFORMS=darwin linux
 BINARIES:= cron-shell cron-me
 
-
-.PHONY:	all $(BINARIES) clean test
+.PHONY:	all $(BINARIES) clean test ship
 
 default: $(BINARIES)
 all: ${PLATFORMS}
 clean:
-	${GIT} clean -dxf bin
+	${GIT} clean -dxf dist
 
 $(BINARIES):
 	$(GO) build -o $@ cmd/$@/main.go
 
-${PLATFORMS}:
-	@mkdir -p bin/$@
-	GOOS=$@ $(GO) build -o bin/$@/cron-shell cmd/cron-shell/main.go
-	GOOS=$@ $(GO) build -o bin/$@/cron-me cmd/cron-me/main.go
-	tar -czf bin/$@.tgz -C bin/$@ .
+snapshot:
+	goreleaser --snapshot --skip-publish --rm-dist
+
+release:
+	goreleaser
 
 test:
 	$(GO) test -v ./...
